@@ -1,0 +1,15 @@
+[package]
+name = "ytb"
+version = "0.1.0"
+edition = "2021"
+description = "A git-style YouTube CLI: search and play videos from your terminal by index."
+license = "MIT"
+
+[[bin]]
+name = "ytb"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
