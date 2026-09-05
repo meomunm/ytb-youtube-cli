@@ -27,7 +27,12 @@ enum Player {
     Open,
     Dl,
     Mp3,
+    Ascii,
 }
+
+/// Default terminal video-output driver for `ascii` (built into mpv, no extra
+/// deps). Override with `YTB_ASCII_VO` (e.g. `caca`, `sixel`).
+const DEFAULT_ASCII_VO: &str = "tct";
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -52,6 +57,7 @@ fn run(args: &[String]) -> i32 {
         "url" | "u" => cmd_url(rest),
         "play" | "p" => cmd_player("play", rest, Player::Play),
         "listen" | "a" => cmd_player("listen", rest, Player::Listen),
+        "ascii" | "x" => cmd_player("ascii", rest, Player::Ascii),
         "open" | "o" => cmd_player("open", rest, Player::Open),
         "dl" | "d" | "download" => cmd_player("dl", rest, Player::Dl),
         "mp3" => cmd_player("mp3", rest, Player::Mp3),
@@ -70,6 +76,21 @@ fn run(args: &[String]) -> i32 {
 /// Colors on only when stdout is a TTY and `NO_COLOR` is unset.
 fn use_color() -> bool {
     std::env::var_os("NO_COLOR").is_none() && std::io::stdout().is_terminal()
+}
+
+/// The mpv video-output driver used by `ascii`, from `YTB_ASCII_VO`.
+///
+/// A blank or unset value uses [`DEFAULT_ASCII_VO`] (`tct`).
+fn ascii_vo() -> String {
+    ascii_vo_from(std::env::var("YTB_ASCII_VO").ok())
+}
+
+/// Pure core of [`ascii_vo`]: pick a driver from an optional raw value.
+fn ascii_vo_from(raw: Option<String>) -> String {
+    match raw {
+        Some(v) if !v.trim().is_empty() => v.trim().to_string(),
+        _ => DEFAULT_ASCII_VO.to_string(),
+    }
 }
 
 /// `search <query...>` — fetch results, save them, and print the list.
@@ -139,6 +160,7 @@ fn cmd_player(name: &str, rest: &[String], player: Player) -> Result<i32, AppErr
     let (bin, mut cmd_args, dep) = match player {
         Player::Play => ("mpv", vec![], "mpv"),
         Player::Listen => ("mpv", vec!["--no-video".to_string()], "mpv"),
+        Player::Ascii => ("mpv", vec![format!("--vo={}", ascii_vo())], "mpv"),
         Player::Open => ("open", vec![], "open"),
         Player::Dl => (
             "yt-dlp",
@@ -184,6 +206,7 @@ LỆNH:
   list,   ls, l         In lại danh sách kết quả gần nhất
   play,   p <n...>      Phát video bằng mpv (giữ hàng đợi)
   listen, a <n...>      Phát chỉ âm thanh (mpv --no-video)
+  ascii,  x <n...>      Phát video dạng ký tự ngay trong terminal
   open,   o <n...>      Mở trên trình duyệt (macOS: open)
   url,    u [n...]      In URL ra stdout (không kèm gì → in tất cả)
   dl,     d <n...>      Tải video (yt-dlp)
@@ -196,8 +219,9 @@ VÍ DỤ:
   ytb url 2 | pbcopy
 
 BIẾN MÔI TRƯỜNG:
-  YTB_COUNT   Số kết quả mỗi lần tìm (mặc định 20)
-  NO_COLOR    Đặt bất kỳ giá trị nào để tắt màu
+  YTB_COUNT      Số kết quả mỗi lần tìm (mặc định 20)
+  YTB_ASCII_VO   Driver video của 'ascii' (mặc định tct; vd caca, sixel)
+  NO_COLOR       Đặt bất kỳ giá trị nào để tắt màu
 
 Danh sách kết quả lưu ở: ${{XDG_CACHE_HOME:-$HOME/.cache}}/ytb/results.tsv"
     );
@@ -220,5 +244,18 @@ mod tests {
     #[test]
     fn unknown_command_is_nonzero() {
         assert_eq!(run(&["frobnicate".to_string()]), 2);
+    }
+
+    #[test]
+    fn ascii_vo_defaults_to_tct() {
+        assert_eq!(ascii_vo_from(None), "tct");
+        assert_eq!(ascii_vo_from(Some("".to_string())), "tct");
+        assert_eq!(ascii_vo_from(Some("   ".to_string())), "tct");
+    }
+
+    #[test]
+    fn ascii_vo_uses_override() {
+        assert_eq!(ascii_vo_from(Some("caca".to_string())), "caca");
+        assert_eq!(ascii_vo_from(Some("  sixel ".to_string())), "sixel");
     }
 }

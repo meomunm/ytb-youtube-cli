@@ -45,6 +45,7 @@ installed — you only need a tool when you invoke the command that uses it.
 | `list` | `ls`, `l` | Reprint the last results |
 | `play <n...>` | `p` | Play in mpv (keeps a queue) |
 | `listen <n...>` | `a` | Audio only (`mpv --no-video`) |
+| `ascii <n...>` | `x` | Play as characters right in the terminal |
 | `open <n...>` | `o` | Open in the browser (`open`) |
 | `url [n...]` | `u` | Print watch URLs (no args → all) |
 | `dl <n...>` | `d`, `download` | Download the video |
@@ -70,9 +71,27 @@ plays #3, then #1 twice, then #2 — all in a single mpv queue.
 | Variable | Meaning |
 |---|---|
 | `YTB_COUNT` | Results per search (default `20`) |
+| `YTB_ASCII_VO` | mpv video driver for `ascii` (default `tct`; e.g. `caca`, `sixel`) |
 | `NO_COLOR` | Set to any value to disable colored output |
 
 Results are cached at `${XDG_CACHE_HOME:-$HOME/.cache}/ytb/results.tsv`.
+
+### Terminal video (`ascii`)
+
+`ytb ascii 1` plays a video as text in your terminal — no window, just
+characters. It uses mpv's built-in `tct` output (true-color character cells),
+so it works out of the box and keeps the audio. Pick another driver with
+`YTB_ASCII_VO`:
+
+```console
+ytb ascii 1                 # default: mpv --vo=tct
+YTB_ASCII_VO=caca ytb ascii 1   # classic ASCII art (needs libcaca)
+YTB_ASCII_VO=sixel ytb ascii 1  # sixel graphics (needs a sixel terminal)
+```
+
+Quality depends on your terminal size and font; it looks best in a true-color
+terminal (iTerm2, kitty, WezTerm). Check which drivers your mpv supports with
+`mpv --vo=help`.
 
 ## Development
 
